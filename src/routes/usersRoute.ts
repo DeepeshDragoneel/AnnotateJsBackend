@@ -6,9 +6,15 @@ import Domain = require("../models/domains");
 import logging from "../config/logging";
 import { Connect, Query } from "../config/mysql";
 import { connection } from "../db";
+const jwt = require("jsonwebtoken");
 
 type DomainResultType = { domainId: number; domainName: string };
-type UserResultType = { userId: number; userName: string; email: string };
+type UserResultType = {
+    userId: number;
+    userName: string;
+    email: string;
+    password: string;
+};
 
 const NAMESPACE = "usersRoute";
 
@@ -87,6 +93,77 @@ router.post(
         }
     }
 );
+
+router.post(
+    "/userLogin",
+    async (req: express.Request, res: express.Response) => {
+        console.log(req.body);
+        const email = req.body.email;
+        const password = req.body.password;
+        logging.info("USER LOGIN", "User login");
+        try {
+            const query = "SELECT * FROM users WHERE email = '" + email + "'";
+            const results = (await Query(
+                connection!,
+                query
+            )) as UserResultType[];
+            logging.info("USER LOGIN", "User: ", results);
+            if (results.length === 0 || results === undefined) {
+                logging.info("USER LOGIN", "User not found");
+                res.status(200).json({
+                    success: false,
+                    message: "User not found",
+                });
+            } else {
+                if (results[0].password === password) {
+                    logging.info("USER LOGIN", "User found");
+                    const token = jwt.sign(
+                        {
+                            userId: results[0].userId,
+                            userName: results[0].userName,
+                            email: results[0].email,
+                        },
+                        process.env.JWT_SECRET_KEY
+                    );
+                    res.status(200).json({
+                        success: true,
+                        message: "User found",
+                        token: token,
+                        userName: results[0].userName,
+                    });
+                } else {
+                    logging.info("USER LOGIN", "Wrong password");
+                    res.status(200).json({
+                        success: false,
+                        message: "Wrong password",
+                    });
+                }
+            }
+        } catch (err) {
+            logging.error("USER LOGIN", err as string);
+        }
+    }
+);
+
+router.post("/checkUser", (req: express.Request, res: express.Response) => {
+    const token = req.body.AnnotateJsUserToken;
+    logging.info("CHECK USER", "Checking user");
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        logging.info("CHECK USER", "User found");
+        res.status(200).json({
+            success: true,
+            message: "User found",
+            userName: decoded.userName,
+        });
+    } catch (err) {
+        logging.error("CHECK USER", err as string);
+        res.status(200).json({
+            success: false,
+            message: "User not found",
+        });
+    }
+});
 
 router.get("/", (req: express.Request, res: express.Response) => {
     res.send("Hello World!");
