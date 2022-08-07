@@ -104,12 +104,19 @@ router.post(
         const password = req.body.password;
         logging.info("USER LOGIN", "User login");
         try {
-            const query = "SELECT * FROM users WHERE email = '" + email + "'";
-            const results = (await Query(
+            let query = "SELECT * FROM users WHERE email = '" + email + "'";
+            let results = (await Query(
                 connection!,
                 query
             )) as UserResultType[];
             logging.info("USER LOGIN", "User: ", results);
+            if(results.length == 0) {
+                query = "SELECT * FROM users WHERE userName = '" + email + "'";
+                results = (await Query(
+                    connection!,
+                    query
+                )) as UserResultType[];
+            }
             if (results.length === 0 || results === undefined) {
                 logging.info("USER LOGIN", "User not found");
                 res.status(200).json({

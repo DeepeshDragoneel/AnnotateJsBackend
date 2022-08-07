@@ -5,6 +5,7 @@ import morgan from "morgan";
 import { config } from "./config/config";
 import { Sequelize } from "sequelize";
 const usersRoute = require("./routes/usersRoute");
+const commentRoute = require("./routes/commentsRoutes");
 import mysql from "mysql";
 import { connectToDB } from "./db";
 
@@ -56,6 +57,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // );
 
 app.use(usersRoute.routes);
+app.use(commentRoute.routes);
 
 const startApp = async () => {
     try {
