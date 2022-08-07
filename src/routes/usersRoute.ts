@@ -102,14 +102,14 @@ router.post(
         console.log(req.body);
         const email = req.body.email;
         const password = req.body.password;
-        logging.info("USER LOGIN", "User login");
+        // logging.info("USER LOGIN", "User login");
         try {
             let query = "SELECT * FROM users WHERE email = '" + email + "'";
             let results = (await Query(
                 connection!,
                 query
             )) as UserResultType[];
-            logging.info("USER LOGIN", "User: ", results);
+            // logging.info("USER LOGIN", "User: ", results);
             if(results.length == 0) {
                 query = "SELECT * FROM users WHERE userName = '" + email + "'";
                 results = (await Query(
@@ -141,7 +141,7 @@ router.post(
                         userName: results[0].userName,
                     });
                 } else {
-                    logging.info("USER LOGIN", "Wrong password");
+                    // logging.info("USER LOGIN", "Wrong password");
                     res.status(200).json({
                         success: false,
                         message: "Wrong password",
@@ -158,10 +158,10 @@ router.post(
     "/checkUser",
     async (req: express.Request, res: express.Response) => {
         const token = req.body.AnnotateJsUserToken;
-        logging.info("CHECK USER", "Checking user");
+        // logging.info("CHECK USER", "Checking user");
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-            logging.info("CHECK USER", "User found");
+            // logging.info("CHECK USER", "User found");
             res.status(200).json({
                 success: true,
                 message: "User found",
@@ -183,16 +183,16 @@ router.post(
         const userName = req.body.userName;
         const email = req.body.email;
         const password = req.body.password;
-        logging.info("USER REGISTER", "User register");
+        // logging.info("USER REGISTER", "User register");
         try {
             let query = "SELECT * FROM users WHERE email = '" + email + "'";
             const results = (await Query(
                 connection!,
                 query
             )) as UserResultType[];
-            logging.info("USER REGISTER", "User: ", results);
+            // logging.info("USER REGISTER", "User: ", results);
             if (results.length === 0 || results === undefined) {
-                logging.info("USER REGISTER", "Adding User");
+                // logging.info("USER REGISTER", "Adding User");
                 // query = `INSERT INTO users (userName, email, password) VALUES ('${userName}', '${email}', '${password}')`;
                 // await Query(connection!, query);
                 // logging.info("USER REGISTER", "User added");
@@ -230,7 +230,7 @@ router.post(
                     message: "Email sent to the user",
                 });
             } else {
-                logging.info("USER REGISTER", "User already exists");
+                // logging.info("USER REGISTER", "User already exists");
                 res.status(200).json({
                     success: false,
                     message: "User already exists",

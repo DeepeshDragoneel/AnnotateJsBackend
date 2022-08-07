@@ -8,6 +8,7 @@ import { connection } from "../db";
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 import { SMTPClient } from "emailjs";
+import console from "console";
 
 type UserResultType = {
     userId: number;
@@ -34,6 +35,8 @@ type CommentType = {
     message: string;
     elementIdentifier: string;
 };
+
+type QueryType = { pageNumber: number; pageOfDomain: string; domain: string };
 
 router.post(
     "/postComment",
@@ -93,6 +96,40 @@ router.post(
                     message: "Comment posted",
                 });
             }
+        } catch (err) {
+            // logging.error("Comments", err as string);
+            console.log(err);
+            res.status(500).send(err);
+        }
+    }
+);
+
+router.get(
+    "/getComments",
+    async (req: express.Request, res: express.Response) => {
+        try {
+            // console.log("asdasd", req.query.pageOfDomain);
+            // const { pageOfDomain, domain } = req.body;
+            let temp = req.query as unknown as QueryType;
+            // console.log(temp);
+            // const query = `SELECT * FROM comments WHERE pageOfDomainId = (SELECT id FROM pagesOfDomain WHERE pageName = '${temp.pageOfDomain}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${temp.domain}')`;
+            let query = `SELECT * FROM comments INNER JOIN users ON comments.userId=users.userId WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${
+                temp.pageOfDomain
+            }') LIMIT ${temp.pageNumber * 10}, ${temp.pageNumber * 10 + 10}`;
+            const commentResults = (await Query(
+                connection!,
+                query
+            )) as CommentType[];
+            query = `SELECT count(*) as commentsCountNumber FROM comments WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${temp.pageOfDomain}')`;
+            const commentCount = (await Query(connection!, query)) as {
+                commentsCountNumber: number;
+            }[];
+            res.json({
+                success: true,
+                message: "Comments retrieved",
+                comments: commentResults,
+                hasMore: commentCount[0].commentsCountNumber > temp.pageNumber*10+10,
+            });
         } catch (err) {
             // logging.error("Comments", err as string);
             console.log(err);
