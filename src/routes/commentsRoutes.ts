@@ -36,7 +36,13 @@ type CommentType = {
     elementIdentifier: string;
 };
 
-type QueryType = { pageNumber: number; pageOfDomain: string; domain: string };
+type QueryType = {
+    pageNumber: number;
+    pageOfDomain: string;
+    domain: string;
+    username: string;
+    idx: number;
+};
 
 router.post(
     "/postComment",
@@ -86,7 +92,9 @@ router.post(
                     )) as PageOfDomainType[];
                 }
                 console.log(pageResult);
-                query = `INSERT INTO comments (pageOfDomainId, userId, message, elementIdentifier) VALUES (${pageResult[0].id}, ${userId}, '${comment}', '${itemBeingCommented}')`;
+                query = `INSERT INTO comments (pageOfDomainId, userId, message, elementIdentifier, created_at) VALUES (${
+                    pageResult[0].id
+                }, ${userId}, '${comment}', '${itemBeingCommented}', '${new Date().toISOString()}')`;
                 const commentResult = (await Query(
                     connection!,
                     query
@@ -113,9 +121,17 @@ router.get(
             let temp = req.query as unknown as QueryType;
             // console.log(temp);
             // const query = `SELECT * FROM comments WHERE pageOfDomainId = (SELECT id FROM pagesOfDomain WHERE pageName = '${temp.pageOfDomain}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${temp.domain}')`;
+            let filter = "";
+            if (temp.idx == 1) {
+                filter = ` AND userName = "${temp.username}"`;
+                console.log(filter);
+            }
             let query = `SELECT * FROM comments INNER JOIN users ON comments.userId=users.userId WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${
                 temp.pageOfDomain
-            }') LIMIT ${temp.pageNumber * 10}, ${temp.pageNumber * 10 + 10}`;
+            }')${filter} ORDER BY comments.created_at DESC LIMIT ${
+                temp.pageNumber * 10
+            }, ${temp.pageNumber * 10 + 10}`;
+            console.log(query);
             const commentResults = (await Query(
                 connection!,
                 query
@@ -128,7 +144,9 @@ router.get(
                 success: true,
                 message: "Comments retrieved",
                 comments: commentResults,
-                hasMore: commentCount[0].commentsCountNumber > temp.pageNumber*10+10,
+                hasMore:
+                    commentCount[0].commentsCountNumber >
+                    temp.pageNumber * 10 + 10,
             });
         } catch (err) {
             // logging.error("Comments", err as string);
