@@ -16,7 +16,11 @@ type UserResultType = {
     email: string;
     password: string;
 };
-
+type DomainToUsersType = {
+    domainId: number;
+    email: string;
+    isAdmin: number;
+};
 type DomainResultType = {
     domainId: number;
     domainName: string;
@@ -148,6 +152,66 @@ router.get(
                     commentCount[0].commentsCountNumber >
                     temp.pageNumber * 10 + 10,
             });
+        } catch (err) {
+            // logging.error("Comments", err as string);
+            console.log(err);
+            res.status(500).send(err);
+        }
+    }
+);
+
+router.post(
+    "/resolveComment",
+    async (req: express.Request, res: express.Response) => {
+        try {
+            const { commentId, token, domain } = req.body;
+            const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+            const userId = decoded.userId;
+            let query = `SELECT * FROM users WHERE userId = ${userId}`;
+            const userResults = (await Query(
+                connection!,
+                query
+            )) as UserResultType[];
+            if (userResults.length === 0) {
+                res.json({
+                    success: false,
+                    message: "User not found",
+                });
+            } else {
+                query = `SELECT * FROM domainToUsers WHERE email = '${userResults[0].email}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}')`;
+                const newResults = (await Query(
+                    connection!,
+                    query
+                )) as DomainToUsersType[];
+                if (newResults.length === 0 || newResults[0].isAdmin === 0) {
+                    res.json({
+                        success: false,
+                        message: "User not authorized",
+                    });
+                    return;
+                }
+                query = `SELECT * FROM comments WHERE commentsId = ${commentId}`;
+                const commentResults = (await Query(
+                    connection!,
+                    query
+                )) as CommentType[];
+                if (commentResults.length === 0) {
+                    res.json({
+                        success: false,
+                        message: "Comment not found",
+                    });
+                } else {
+                    query = `UPDATE comments SET resolved = 1 WHERE commentsId = ${commentId}`;
+                    const commentResult = (await Query(
+                        connection!,
+                        query
+                    )) as CommentType[];
+                    res.json({
+                        success: true,
+                        message: "Comment resolved",
+                    });
+                }
+            }
         } catch (err) {
             // logging.error("Comments", err as string);
             console.log(err);
