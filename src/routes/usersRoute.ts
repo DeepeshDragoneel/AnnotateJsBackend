@@ -132,12 +132,12 @@ router.post(
                 });
             } else {
                 console.log(results[0], results[0].newAccount);
-                if (results[0].newAccount === 0) {
-                    res.status(200).json({
-                        success: false,
-                        message: "User not found",
-                    });
-                }
+                // if (results[0].newAccount === 0) {
+                //     res.status(200).json({
+                //         success: false,
+                //         message: "User not found",
+                //     });
+                // }
                 if (results[0].password === password) {
                     // //logging.info("USER LOGIN", "User found");
                     const token = jwt.sign(

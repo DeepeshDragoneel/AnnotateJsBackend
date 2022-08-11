@@ -126,8 +126,15 @@ router.get(
             // console.log(temp);
             // const query = `SELECT * FROM comments WHERE pageOfDomainId = (SELECT id FROM pagesOfDomain WHERE pageName = '${temp.pageOfDomain}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${temp.domain}')`;
             let filter = "";
-            if (temp.idx == 1) {
-                filter = ` AND userName = "${temp.username}"`;
+            if(temp.idx == 0){
+                filter = ` AND resolved = 0`
+            }
+            else if (temp.idx == 1) {
+                filter = ` AND userName = "${temp.username}" AND resolved = 0`;
+                console.log(filter);
+            }
+            else if (temp.idx == 2) {
+                filter = ` AND resolved = 1`;
                 console.log(filter);
             }
             let query = `SELECT * FROM comments INNER JOIN users ON comments.userId=users.userId WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${
@@ -165,6 +172,7 @@ router.post(
     async (req: express.Request, res: express.Response) => {
         try {
             const { commentId, token, domain } = req.body;
+            console.log(req.body);
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
             const userId = decoded.userId;
             let query = `SELECT * FROM users WHERE userId = ${userId}`;
