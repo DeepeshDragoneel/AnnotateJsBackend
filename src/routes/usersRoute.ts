@@ -149,9 +149,20 @@ router.post(
                         process.env.JWT_SECRET_KEY
                     );
                     query = `SELECT * FROM domainToUsers WHERE email = '${email}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}')`;
-                    const newResults = (await Query(connection!, query)) as DomainToUsersType[];
+                    const newResults = (await Query(
+                        connection!,
+                        query
+                    )) as DomainToUsersType[];
                     let temp = 0;
-                    console.log(newResults);
+                    console.log("newResults: ", newResults);
+                    if(newResults.length === 0 || newResults === undefined){
+                        res.status(200).json({
+                            success: true,
+                            message: "User found",
+                            access: false,
+                        });
+                        return;
+                    }
                     if (newResults.length !== 0 && newResults !== undefined) {
                         temp = newResults[0].isAdmin;
                     }
@@ -164,6 +175,7 @@ router.post(
                         userId: results[0].userId,
                         email: results[0].email,
                         isAdmin: temp,
+                        access: true,
                     });
                 } else {
                     // //logging.info("USER LOGIN", "Wrong password");
@@ -183,20 +195,36 @@ router.post(
     "/checkUser",
     async (req: express.Request, res: express.Response) => {
         const token = req.body.AnnotateJsUserToken;
+        const domain = req.body.domain;
         // //logging.info("CHECK USER", "Checking user");
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
             // //logging.info("CHECK USER", "User found");
+            const query = `SELECT * FROM domainToUsers WHERE domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}') AND email = '${decoded.email}'`;
+            const results = (await Query(
+                connection!,
+                query
+            )) as DomainToUsersType[];
+            if (results.length === 0 || results === undefined) {
+                res.status(200).json({
+                    success: true,
+                    message: "User found",
+                    access: false,
+                });
+                return;
+            }
             res.status(200).json({
                 success: true,
                 message: "User found",
                 userName: decoded.userName,
+                access: true,
             });
         } catch (err) {
             //logging.error("CHECK USER", err as string);
             res.status(200).json({
                 success: false,
                 message: "User not found",
+                access: false,
             });
         }
     }
