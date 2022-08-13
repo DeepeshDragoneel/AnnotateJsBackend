@@ -220,8 +220,13 @@ export const countOfLeftComments = async (
 ): Promise<number | undefined> => {
     try {
         const query = `SELECT COUNT(*) FROM comments WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${pageOfDomain}')`;
-        const results = (await Query(connection!, query)) as number[];
-        return results[0];
+        const commentCount = (await Query(connection!, query)) as {
+            commentsCountNumber: number;
+        }[];
+        let result = Object.values(
+            JSON.parse(JSON.stringify(commentCount[0]))
+        )[0] as number;
+        return result;
     } catch (error: any) {
         logging.error("COUNT_OF_LEFT_COMMENTS", error);
     }

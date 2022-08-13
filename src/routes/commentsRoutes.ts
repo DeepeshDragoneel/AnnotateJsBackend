@@ -52,6 +52,7 @@ type QueryType = {
 router.post(
     "/postComment",
     async (req: express.Request, res: express.Response) => {
+        console.log("postComment");
         try {
             const {
                 comment,
