@@ -1,5 +1,5 @@
-import { Connect } from "./config/mysql";
-import logging from "./config/logging";
+import { Connect } from "../config/mysql";
+import logging from "../config/logging";
 
 export let connection: any = undefined;
 

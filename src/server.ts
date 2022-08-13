@@ -1,22 +1,7 @@
-import express from "express";
-import cors from "cors";
-import bodyParser from "body-parser";
-import morgan from "morgan";
 import { config } from "./config/config";
 import { Sequelize } from "sequelize";
-const usersRoute = require("./routes/usersRoute");
-const commentRoute = require("./routes/commentsRoutes");
-import mysql from "mysql";
-import { connectToDB } from "./db";
-
-const app = express();
-
-app.use(cors());
-app.use(morgan("dev"));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+import { connectToDB } from "./database/db";
+import { app } from "./app";
 
 // const sequelize = new Sequelize({
 //     host: config.mysql.host,
@@ -56,23 +41,9 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 //     }
 // );
 
-app.use(usersRoute.routes);
-app.use(commentRoute.routes);
-
-const startApp = async () => {
-    try {
-        // await sequelize.authenticate();
-        // console.log("Connection has been established successfully.");
-        // await sequelize.sync();
-        connectToDB();
-        app.listen(config.server.port, () => {
-            console.log("Listening on port: ", config.server.port);
-        }).on("error", (e: Error) => {
-            console.log("Error happened: ", e.message);
-        });
-    } catch (error) {
-        console.error("Unable to connect to the database:", error);
-    }
-};
-
-startApp();
+connectToDB();
+app.listen(config.server.port, () => {
+    console.log("Listening on port: ", config.server.port);
+}).on("error", (e: Error) => {
+    console.log("Error happened: ", e.message);
+});

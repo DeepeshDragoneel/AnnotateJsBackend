@@ -5,10 +5,11 @@ const sequelize = new Sequelize("mysql::memory:");
 import Domain = require("../models/domains");
 import logging from "../config/logging";
 import { Connect, Query } from "../config/mysql";
-import { connection } from "../db";
+import { connection } from "../database/db";
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 import { SMTPClient } from "emailjs";
+import * as dataBaseQueries from "../database/dataQueries";
 
 type DomainResultType = { domainId: number; domainName: string };
 type UserResultType = {
@@ -30,79 +31,47 @@ const NAMESPACE = "usersRoute";
 router.post(
     "/addUsers",
     async (req: express.Request, res: express.Response) => {
+        console.log("addUsers--------------------------------");
         const allowedUsers = req.body.allowedUsers;
         const adminUsers = req.body.adminUsers;
-        const domainName = req.body.domain;
+        const domainName = "www.deepesh.com";
+        let query = "";
         //logging.info(NAMESPACE, "Adding users and domains to database");
         try {
             //creating or fetching domain Id
-            let query =
-                "SELECT * FROM registeredDomains WHERE domainName = '" +
-                domainName +
-                "'";
             let domainId: number;
-            const results = (await Query(
-                connection!,
-                query
-            )) as DomainResultType[];
-            //logging.info(NAMESPACE, "All Domains: ", results);
-            if (results.length === 0 || results === undefined) {
-                //logging.info(NAMESPACE, "Adding Domain");
-                query =
-                    "INSERT INTO registeredDomains (domainName) VALUES ('" +
-                    domainName +
-                    "')";
-                await Query(connection!, query);
+            let results = await dataBaseQueries.findDomain(domainName);
+            logging.info(NAMESPACE, "All Domains: ", results);
+            if (results === undefined || results.length === 0) {
+                logging.info(NAMESPACE, "Adding Domain");
+                results = await dataBaseQueries.addNewDomain(domainName);
             }
-            domainId = results[0].domainId;
+            domainId = results![0].domainId;
             //Removing all users from domain
-            query = `DELETE FROM domainToUsers WHERE domainId = ${domainId}`;
-            await Query(connection!, query);
+            await dataBaseQueries.deleteDomainUsers(domainId);
 
             //Creating or fetching users
-            console.log(allowedUsers);
+            // console.log(allowedUsers);
             for (let i = 0; i < allowedUsers.length; i++) {
                 console.log(allowedUsers[i]);
-                // query =
-                //     "SELECT * FROM users WHERE email = '" +
-                //     allowedUsers[i] +
-                //     "'";
-                // const results = (await Query(
-                //     connection!,
-                //     query
-                // )) as UserResultType[];
-                // //logging.info(NAMESPACE, "User: ", results);
-                // if (results.length === 0 || results === undefined) {
-                //     //logging.info(NAMESPACE, "Adding User");
-                //     query = `INSERT INTO users (userName, email, newAccount) VALUES ('${allowedUsers[i]}', '${allowedUsers[i]}', false)`;
-                //     await Query(connection!, query);
-                // }
-                query = `INSERT INTO domainToUsers (domainId, email, isAdmin) VALUES (${domainId}, '${allowedUsers[i]}', 0)`;
-                await Query(connection!, query);
+                await dataBaseQueries.addAllowedUsers(
+                    domainId,
+                    allowedUsers[i]
+                );
             }
 
             //Creating or fetching admin users
             for (let i = 0; i < adminUsers.length; i++) {
-                // query =
-                //     "SELECT * FROM users WHERE email = '" + adminUsers[i] + "'";
-                // const results = (await Query(
-                //     connection!,
-                //     query
-                // )) as UserResultType[];
-                // //logging.info(NAMESPACE, "Admins: ", results);
-                // if (results.length === 0 || results === undefined) {
-                //     //logging.info(NAMESPACE, "Adding User");
-                //     query = `INSERT INTO users (userName, email) VALUES ('${adminUsers[i]}', '${adminUsers[i]}')`;
-                //     await Query(connection!, query);
-                // }
-                console.log(adminUsers[i]);
-                query = `DELETE FROM domainToUsers WHERE domainId = ${domainId} AND email = '${adminUsers[i]}'`;
-                await Query(connection!, query);
-                query = `INSERT INTO domainToUsers (domainId, email, isAdmin) VALUES (${domainId}, '${adminUsers[i]}', 1)`;
-                await Query(connection!, query);
+                dataBaseQueries.addAdminUsers(domainId, adminUsers[i]);
+                res.json({
+                    message: "Successfully added users to domain",
+                });
             }
         } catch (err) {
             // logging.error(NAMESPACE, err as string);
+            res.json({
+                message: "Error adding users to domain",
+            });
             console.log(err);
         }
     }
@@ -116,16 +85,12 @@ router.post(
         const password = req.body.password;
         const domain = req.body.domain;
         // //logging.info("USER LOGIN", "User login");
+        let query;
         try {
-            let query = "SELECT * FROM users WHERE email = '" + email + "'";
-            let results = (await Query(connection!, query)) as UserResultType[];
-            // //logging.info("USER LOGIN", "User: ", results);
-            if (results.length == 0) {
-                query = "SELECT * FROM users WHERE userName = '" + email + "'";
-                results = (await Query(connection!, query)) as UserResultType[];
-            }
-            if (results.length === 0 || results === undefined) {
-                // //logging.info("USER LOGIN", "User not found");
+            let results = await dataBaseQueries.findUser(email);
+            //logging.info("USER LOGIN", "User: ", results);
+            if (results === undefined || results!.length === 0) {
+                //logging.info("USER LOGIN", "User not found");
                 res.status(200).json({
                     success: false,
                     message: "User not found",
@@ -148,14 +113,14 @@ router.post(
                         },
                         process.env.JWT_SECRET_KEY
                     );
-                    query = `SELECT * FROM domainToUsers WHERE email = '${email}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}')`;
-                    const newResults = (await Query(
-                        connection!,
-                        query
-                    )) as DomainToUsersType[];
+
+                    const newResults = await dataBaseQueries.findUserToDomain(
+                        domain,
+                        email
+                    );
                     let temp = 0;
                     console.log("newResults: ", newResults);
-                    if(newResults.length === 0 || newResults === undefined){
+                    if (newResults === undefined || newResults.length === 0) {
                         res.status(200).json({
                             success: true,
                             message: "User found",

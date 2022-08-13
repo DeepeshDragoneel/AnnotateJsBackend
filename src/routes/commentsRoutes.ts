@@ -4,7 +4,7 @@ const { Sequelize, Model, DataTypes } = require("sequelize");
 const sequelize = new Sequelize("mysql::memory:");
 import logging from "../config/logging";
 import { Connect, Query } from "../config/mysql";
-import { connection } from "../db";
+import { connection } from "../database/db";
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 import { SMTPClient } from "emailjs";
