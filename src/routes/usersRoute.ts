@@ -165,12 +165,11 @@ router.post(
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
             // //logging.info("CHECK USER", "User found");
-            const query = `SELECT * FROM domainToUsers WHERE domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}') AND email = '${decoded.email}'`;
-            const results = (await Query(
-                connection!,
-                query
-            )) as DomainToUsersType[];
-            if (results.length === 0 || results === undefined) {
+            const results = await dataBaseQueries.findUserToDomain(
+                domain,
+                decoded.email
+            );
+            if ((results === undefined || results.length) === 0) {
                 res.status(200).json({
                     success: true,
                     message: "User found",
@@ -203,13 +202,9 @@ router.post(
         const password = req.body.password;
         // //logging.info("USER REGISTER", "User register");
         try {
-            let query = "SELECT * FROM users WHERE email = '" + email + "'";
-            const results = (await Query(
-                connection!,
-                query
-            )) as UserResultType[];
+            const results = await dataBaseQueries.findUser(email);
             // //logging.info("USER REGISTER", "User: ", results);
-            if (results.length === 0 || results === undefined) {
+            if ((results === undefined || results.length) === 0) {
                 // //logging.info("USER REGISTER", "Adding User");
                 // query = `INSERT INTO users (userName, email, password) VALUES ('${userName}', '${email}', '${password}')`;
                 // await Query(connection!, query);
@@ -269,8 +264,11 @@ router.get(
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
             //logging.info("VERIFY USER", "Adding user");
-            const query = `INSERT INTO users (userName, email, password) VALUES ('${decoded.userName}', '${decoded.email}', '${decoded.password}')`;
-            await Query(connection!, query);
+            await dataBaseQueries.addUser(
+                decoded.userName,
+                decoded.email,
+                decoded.password
+            );
             //logging.info("VERIFY USER", "User added");
             res.set("Content-Type", "text/html");
             res.send(

@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 import { SMTPClient } from "emailjs";
 import console from "console";
+import * as dataBaseQueries from "../database/dataQueries";
 
 type UserResultType = {
     userId: number;
@@ -61,48 +62,37 @@ router.post(
             } = req.body;
             const decoded = jwt.verify(userToken, process.env.JWT_SECRET_KEY);
             const userId = decoded.userId;
-            let query = `SELECT * FROM users WHERE userId = ${userId}`;
-            const userResults = (await Query(
-                connection!,
-                query
-            )) as UserResultType[];
-            if (userResults.length === 0) {
+
+            const userResults = await dataBaseQueries.getUserById(userId);
+            if (userResults === undefined || userResults.length === 0) {
                 res.json({
                     success: false,
                     message: "User not found",
                 });
             } else {
-                query = `SELECT * FROM registeredDomains WHERE domainName = '${domain}'`;
-                const domainResult = (await Query(
-                    connection!,
-                    query
-                )) as DomainResultType[];
-                if (domainResult.length === 0) {
+                const domainResult = await dataBaseQueries.findDomain(domain);
+                if (domainResult === undefined || domainResult.length === 0) {
                     res.json({
                         success: false,
                         message: "Domain not found",
                     });
                 }
-                query = `SELECT * FROM pagesOfDomain WHERE pageName = '${pageOfDomain}'`;
-                let pageResult = (await Query(
-                    connection!,
-                    query
-                )) as PageOfDomainType[];
-                if (pageResult.length === 0) {
-                    query = `INSERT INTO pagesOfDomain (pageName, domainId) VALUES ('${pageOfDomain}', ${domainResult[0].domainId})`;
-                    pageResult = (await Query(
-                        connection!,
-                        query
-                    )) as PageOfDomainType[];
+                let pageResult = await dataBaseQueries.getPageOfDomain(
+                    pageOfDomain
+                );
+                if (pageResult === undefined || pageResult.length === 0) {
+                    pageResult = await dataBaseQueries.insertIntoPagesOfDomain(
+                        pageOfDomain,
+                        domainResult![0].domainId
+                    );
                 }
                 console.log(pageResult);
-                query = `INSERT INTO comments (pageOfDomainId, userId, message, elementIdentifier, created_at) VALUES (${
-                    pageResult[0].id
-                }, ${userId}, '${comment}', '${itemBeingCommented}', '${new Date().toISOString()}')`;
-                const commentResult = (await Query(
-                    connection!,
-                    query
-                )) as CommentType[];
+                const commentResult = await dataBaseQueries.insertComment(
+                    pageResult![0].id,
+                    userId,
+                    comment,
+                    itemBeingCommented
+                );
                 res.json({
                     success: true,
                     message: "Comment posted",
@@ -126,38 +116,33 @@ router.get(
             // console.log(temp);
             // const query = `SELECT * FROM comments WHERE pageOfDomainId = (SELECT id FROM pagesOfDomain WHERE pageName = '${temp.pageOfDomain}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${temp.domain}')`;
             let filter = "";
-            if(temp.idx == 0){
-                filter = ` AND resolved = 0`
-            }
-            else if (temp.idx == 1) {
+            if (temp.idx == 0) {
+                filter = ` AND resolved = 0`;
+            } else if (temp.idx == 1) {
                 filter = ` AND userName = "${temp.username}" AND resolved = 0`;
                 console.log(filter);
-            }
-            else if (temp.idx == 2) {
+            } else if (temp.idx == 2) {
                 filter = ` AND resolved = 1`;
                 console.log(filter);
             }
-            let query = `SELECT * FROM comments INNER JOIN users ON comments.userId=users.userId WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${
+            const commentResults =
+                await dataBaseQueries.getCommentsByPageNumber(
+                    temp.pageOfDomain,
+                    filter,
+                    temp.pageNumber
+                );
+            const commentCount = await dataBaseQueries.countOfLeftComments(
                 temp.pageOfDomain
-            }')${filter} ORDER BY comments.created_at DESC LIMIT ${
-                temp.pageNumber * 10
-            }, ${temp.pageNumber * 10 + 10}`;
-            console.log(query);
-            const commentResults = (await Query(
-                connection!,
-                query
-            )) as CommentType[];
-            query = `SELECT count(*) as commentsCountNumber FROM comments WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${temp.pageOfDomain}')`;
-            const commentCount = (await Query(connection!, query)) as {
-                commentsCountNumber: number;
-            }[];
+            );
+            if (commentCount === undefined) {
+                throw new Error("No comments found");
+            }
+
             res.json({
                 success: true,
                 message: "Comments retrieved",
                 comments: commentResults,
-                hasMore:
-                    commentCount[0].commentsCountNumber >
-                    temp.pageNumber * 10 + 10,
+                hasMore: commentCount! > temp.pageNumber * 10 + 10,
             });
         } catch (err) {
             // logging.error("Comments", err as string);
@@ -175,45 +160,41 @@ router.post(
             console.log(req.body);
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
             const userId = decoded.userId;
-            let query = `SELECT * FROM users WHERE userId = ${userId}`;
-            const userResults = (await Query(
-                connection!,
-                query
-            )) as UserResultType[];
-            if (userResults.length === 0) {
+            const userResults = await dataBaseQueries.getUserById(userId);
+            if (userResults === undefined || userResults.length === 0) {
                 res.json({
                     success: false,
                     message: "User not found",
                 });
             } else {
-                query = `SELECT * FROM domainToUsers WHERE email = '${userResults[0].email}' AND domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}')`;
-                const newResults = (await Query(
-                    connection!,
-                    query
-                )) as DomainToUsersType[];
-                if (newResults.length === 0 || newResults[0].isAdmin === 0) {
+                const newResults = await dataBaseQueries.findUserToDomain(
+                    domain,
+                    userResults[0].email
+                );
+                if (
+                    newResults === undefined ||
+                    newResults.length === 0 ||
+                    newResults[0].isAdmin === 0
+                ) {
                     res.json({
                         success: false,
                         message: "User not authorized",
                     });
                     return;
                 }
-                query = `SELECT * FROM comments WHERE commentsId = ${commentId}`;
-                const commentResults = (await Query(
-                    connection!,
-                    query
-                )) as CommentType[];
-                if (commentResults.length === 0) {
+                const commentResults = await dataBaseQueries.getCommentById(
+                    commentId
+                );
+                if (
+                    commentResults === undefined ||
+                    commentResults.length === 0
+                ) {
                     res.json({
                         success: false,
                         message: "Comment not found",
                     });
                 } else {
-                    query = `UPDATE comments SET resolved = 1 WHERE commentsId = ${commentId}`;
-                    const commentResult = (await Query(
-                        connection!,
-                        query
-                    )) as CommentType[];
+                    await dataBaseQueries.resolveComment(commentId);
                     res.json({
                         success: true,
                         message: "Comment resolved",
