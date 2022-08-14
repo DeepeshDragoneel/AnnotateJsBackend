@@ -31,7 +31,6 @@ const NAMESPACE = "usersRoute";
 router.post(
     "/addUsers",
     async (req: express.Request, res: express.Response) => {
-        console.log("addUsers--------------------------------");
         const allowedUsers = req.body.allowedUsers;
         const adminUsers = req.body.adminUsers;
         const domainName = "www.deepesh.com";
@@ -42,7 +41,11 @@ router.post(
             let domainId: number;
             let results = await dataBaseQueries.findDomain(domainName);
             logging.info(NAMESPACE, "All Domains: ", results);
-            if (results === undefined || results.length === 0) {
+            if (
+                results === null ||
+                results === undefined ||
+                results.length === 0
+            ) {
                 logging.info(NAMESPACE, "Adding Domain");
                 results = await dataBaseQueries.addNewDomain(domainName);
             }
@@ -51,7 +54,6 @@ router.post(
             await dataBaseQueries.deleteDomainUsers(domainId);
 
             //Creating or fetching users
-            // console.log(allowedUsers);
             for (let i = 0; i < allowedUsers.length; i++) {
                 console.log(allowedUsers[i]);
                 await dataBaseQueries.addAllowedUsers(

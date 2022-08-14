@@ -40,10 +40,14 @@ import { app } from "./app";
 //         console.log("The solution is: ", results);
 //     }
 // );
-
-connectToDB();
-app.listen(config.server.port, () => {
-    console.log("Listening on port: ", config.server.port);
-}).on("error", (e: Error) => {
-    console.log("Error happened: ", e.message);
-});
+connectToDB()
+    .then(() => {
+        app.listen(config.server.port, () => {
+            console.log("Listening on port: ", config.server.port);
+        }).on("error", (e: Error) => {
+            console.log("Error happened: ", e.message);
+        });
+    })
+    .catch((err: Error) => {
+        console.log("Error happened: ", err.message);
+    });
