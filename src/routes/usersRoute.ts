@@ -31,22 +31,27 @@ const NAMESPACE = "usersRoute";
 router.post(
     "/addUsers",
     async (req: express.Request, res: express.Response) => {
-        const allowedUsers = req.body.allowedUsers;
-        const adminUsers = req.body.adminUsers;
-        const domainName = "www.deepesh.com";
-        let query = "";
-        //logging.info(NAMESPACE, "Adding users and domains to database");
         try {
+            const allowedUsers = req.body.allowedUsers;
+            const adminUsers = req.body.adminUsers;
+            const domainName = req.body.domain;
+            if (
+                allowedUsers === undefined ||
+                adminUsers === undefined ||
+                domainName === undefined
+            ) {
+                throw new Error("Missing parameters");
+            }
             //creating or fetching domain Id
             let domainId: number;
             let results = await dataBaseQueries.findDomain(domainName);
-            logging.info(NAMESPACE, "All Domains: ", results);
+            // logging.info(NAMESPACE, "All Domains: ", results);
             if (
                 results === null ||
                 results === undefined ||
                 results.length === 0
             ) {
-                logging.info(NAMESPACE, "Adding Domain");
+                // logging.info(NAMESPACE, "Adding Domain");
                 results = await dataBaseQueries.addNewDomain(domainName);
             }
             domainId = results![0].domainId;
@@ -55,7 +60,7 @@ router.post(
 
             //Creating or fetching users
             for (let i = 0; i < allowedUsers.length; i++) {
-                console.log(allowedUsers[i]);
+                // console.log(allowedUsers[i]);
                 await dataBaseQueries.addAllowedUsers(
                     domainId,
                     allowedUsers[i]
@@ -74,7 +79,6 @@ router.post(
             res.json({
                 message: "Error adding users to domain",
             });
-            console.log(err);
         }
     }
 );
@@ -82,12 +86,10 @@ router.post(
 router.post(
     "/userLogin",
     async (req: express.Request, res: express.Response) => {
-        console.log(req.body);
         const email = req.body.email;
         const password = req.body.password;
         const domain = req.body.domain;
         // //logging.info("USER LOGIN", "User login");
-        let query;
         try {
             let results = await dataBaseQueries.findUser(email);
             //logging.info("USER LOGIN", "User: ", results);
@@ -98,13 +100,6 @@ router.post(
                     message: "User not found",
                 });
             } else {
-                console.log(results[0], results[0].newAccount);
-                // if (results[0].newAccount === 0) {
-                //     res.status(200).json({
-                //         success: false,
-                //         message: "User not found",
-                //     });
-                // }
                 if (results[0].password === password) {
                     // //logging.info("USER LOGIN", "User found");
                     const token = jwt.sign(
@@ -121,7 +116,7 @@ router.post(
                         email
                     );
                     let temp = 0;
-                    console.log("newResults: ", newResults);
+                    // console.log("newResults: ", newResults);
                     if (newResults === undefined || newResults.length === 0) {
                         res.status(200).json({
                             success: true,
@@ -133,7 +128,7 @@ router.post(
                     if (newResults.length !== 0 && newResults !== undefined) {
                         temp = newResults[0].isAdmin;
                     }
-                    console.log(temp);
+                    // console.log(temp);
                     res.status(200).json({
                         success: true,
                         message: "User found",
@@ -153,7 +148,11 @@ router.post(
                 }
             }
         } catch (err) {
-            //logging.error("USER LOGIN", err as string);
+            logging.error("USER LOGIN", err as string);
+            res.status(200).json({
+                success: false,
+                message: "Error Logging user",
+            });
         }
     }
 );
@@ -174,7 +173,7 @@ router.post(
             if ((results === undefined || results.length) === 0) {
                 res.status(200).json({
                     success: true,
-                    message: "User found",
+                    message: "User Not Found",
                     access: false,
                 });
                 return;
@@ -189,7 +188,7 @@ router.post(
             //logging.error("CHECK USER", err as string);
             res.status(200).json({
                 success: false,
-                message: "User not found",
+                message: "User Not Found",
                 access: false,
             });
         }
@@ -199,22 +198,20 @@ router.post(
 router.post(
     "/userRegister",
     async (req: express.Request, res: express.Response) => {
-        const userName = req.body.userName;
-        const email = req.body.email;
-        const password = req.body.password;
         // //logging.info("USER REGISTER", "User register");
         try {
+            const userName = req.body.userName;
+            const email = req.body.email;
+            const password = req.body.password;
+            if (
+                userName === undefined ||
+                email === undefined ||
+                password === undefined
+            ) {
+                throw new Error("Missing parameters");
+            }
             const results = await dataBaseQueries.findUser(email);
-            // //logging.info("USER REGISTER", "User: ", results);
-            if ((results === undefined || results.length) === 0) {
-                // //logging.info("USER REGISTER", "Adding User");
-                // query = `INSERT INTO users (userName, email, password) VALUES ('${userName}', '${email}', '${password}')`;
-                // await Query(connection!, query);
-                // //logging.info("USER REGISTER", "User added");
-                // res.status(200).json({
-                //     success: true,
-                //     message: "User added",
-                // });
+            if (results === undefined || results.length === 0) {
                 const token = jwt.sign(
                     {
                         userName: userName,
@@ -223,9 +220,6 @@ router.post(
                     },
                     process.env.JWT_SECRET_KEY
                 );
-                const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-                console.log(decoded);
-                console.log(token);
                 let transporter = nodemailer.createTransport({
                     service: "Gmail",
                     auth: {
@@ -245,7 +239,7 @@ router.post(
                     message: "Email sent to the user",
                 });
             } else {
-                // //logging.info("USER REGISTER", "User already exists");
+                // logging.info("USER REGISTER", "User already exists");
                 res.status(200).json({
                     success: false,
                     message: "User already exists",
@@ -253,6 +247,10 @@ router.post(
             }
         } catch (err) {
             //logging.error("USER REGISTER", err as string);
+            res.status(200).json({
+                success: false,
+                message: err,
+            });
         }
     }
 );
@@ -261,7 +259,6 @@ router.get(
     "/verifyUser",
     async (req: express.Request, res: express.Response) => {
         const token = req.query.token!;
-        console.log(token);
         //logging.info("VERIFY USER", "Verifying user");
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
@@ -273,7 +270,7 @@ router.get(
             );
             //logging.info("VERIFY USER", "User added");
             res.set("Content-Type", "text/html");
-            res.send(
+            res.status(200).send(
                 Buffer.from(
                     "<h1>User added</h1><br/><h3>You can now Login with your credentials!</h3>"
                 )
@@ -281,7 +278,7 @@ router.get(
         } catch (err) {
             //logging.error("VERIFY USER", err as string);
             res.set("Content-Type", "text/html");
-            res.send(Buffer.from("<h1>Error Adding User</h1>"));
+            res.status(504).send(Buffer.from("<h1>Error Adding User</h1>"));
         }
     }
 );

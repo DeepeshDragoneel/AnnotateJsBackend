@@ -5,6 +5,8 @@ const DB_USERNAME = process.env.DB_USERNAME || "";
 const DB_PASSWORD = process.env.DB_PASSWORD || "";
 const DB_HOST = process.env.DB_HOST || "";
 const DB_DATABASE = process.env.DB_DATABASE || "";
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const REDIS_HOST = process.env.REDIS_HOST || "localhost";
 
 const PORT = process.env.PORT || 8000;
 
@@ -13,7 +15,11 @@ export const config = {
         user: DB_USERNAME,
         password: DB_PASSWORD,
         host: DB_HOST,
-        database: DB_DATABASE
+        database: DB_DATABASE,
+    },
+    redis: {
+        port: REDIS_PORT,
+        host: REDIS_HOST,
     },
     server: {
         port: PORT,
