@@ -52,7 +52,7 @@ type QueryType = {
 router.post(
     "/postComment",
     async (req: express.Request, res: express.Response) => {
-        console.log("postComment");
+        // console.log("postComment");
         try {
             const {
                 comment,
@@ -70,6 +70,7 @@ router.post(
                     success: false,
                     message: "User not found",
                 });
+                return;
             } else {
                 const domainResult = await dataBaseQueries.findDomain(domain);
                 if (domainResult === undefined || domainResult.length === 0) {
@@ -77,6 +78,7 @@ router.post(
                         success: false,
                         message: "Domain not found",
                     });
+                    return;
                 }
                 let pageResult = await dataBaseQueries.getPageOfDomain(
                     pageOfDomain
@@ -87,7 +89,7 @@ router.post(
                         domainResult![0].domainId
                     );
                 }
-                console.log(pageResult);
+                // console.log(pageResult);
                 const commentResult = await dataBaseQueries.insertComment(
                     pageResult![0].pageName,
                     pageResult![0].id,
@@ -97,13 +99,16 @@ router.post(
                 );
                 res.json({
                     success: true,
-                    message: "Comment posted",
+                    message: "Comment Posted",
                 });
             }
         } catch (err) {
             // logging.error("Comments", err as string);
-            console.log(err);
-            res.status(500).send(err);
+            // console.log(err);
+            res.status(504).json({
+                success: false,
+                message: "Error posting comment",
+            });
         }
     }
 );
@@ -136,9 +141,6 @@ router.get(
             const commentCount = await dataBaseQueries.countOfLeftComments(
                 temp.pageOfDomain
             );
-            if (commentCount === undefined) {
-                throw new Error("No comments found");
-            }
 
             res.json({
                 success: true,
