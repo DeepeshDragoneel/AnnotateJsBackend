@@ -89,6 +89,7 @@ router.post(
                 }
                 console.log(pageResult);
                 const commentResult = await dataBaseQueries.insertComment(
+                    pageResult![0].pageName,
                     pageResult![0].id,
                     userId,
                     comment,

@@ -1,5 +1,5 @@
 import { Connect, Query } from "../config/mysql";
-import { connection } from "../database/db";
+import { connection, redisClient } from "../database/db";
 import logging from "../config/logging";
 
 type DomainResultType = { domainId: number; domainName: string };
@@ -42,11 +42,19 @@ export const findDomain = async (
     domainName: string
 ): Promise<DomainResultType[] | undefined> => {
     try {
+        if (redisClient.get(`findDomain-${domainName}`)) {
+            const temp = redisClient.get(`domain-${domainName}`);
+            return JSON.parse(temp);
+        }
         let query =
             "SELECT * FROM registeredDomains WHERE domainName = '" +
             domainName +
             "'";
         const results = (await Query(connection!, query)) as DomainResultType[];
+        await redisClient.set(
+            `findDomain-${domainName}`,
+            JSON.stringify(results)
+        );
         return results;
     } catch (error: any) {
         logging.error("FIND_DOMAIN", error);
@@ -162,11 +170,19 @@ export const getPageOfDomain = async (
     pageName: string
 ): Promise<PageOfDomainType[] | undefined> => {
     try {
+        if (redisClient.get(`getPageOfDomain-${pageName}`)) {
+            const temp = await redisClient.get(`getPageOfDomain-${pageName}`);
+            return JSON.parse(temp);
+        }
         const query = `SELECT * FROM pagesOfDomain WHERE pageName = '${pageName}'`;
         let pageResult = (await Query(
             connection!,
             query
         )) as PageOfDomainType[];
+        await redisClient.set(
+            `getPageOfDomain-${pageName}`,
+            JSON.stringify(pageResult)
+        );
         return pageResult;
     } catch (error: any) {
         logging.error("GET_PAGE_OF_DOMAIN", error);
@@ -183,6 +199,7 @@ export const insertIntoPagesOfDomain = async (
 };
 
 export const insertComment = async (
+    pageName: string,
     pageId: number,
     userId: number,
     comment: string,
@@ -191,6 +208,10 @@ export const insertComment = async (
     try {
         const query = `INSERT INTO comments (pageOfDomainId, userId, message, elementIdentifier, created_at) VALUES (${pageId}, ${userId}, '${comment}', '${itemBeingCommented}', '${new Date().toISOString()}')`;
         (await Query(connection!, query)) as CommentType[];
+        if (redisClient.get(`countOfLeftComments_${pageName}`)) {
+            // console.log("redis client exists", redisClient.get(pageName));
+            redisClient.incr(`countOfLeftComments_${pageName}`);
+        }
     } catch (error: any) {
         logging.error("INSERT_COMMENT", error);
     }
@@ -215,10 +236,18 @@ export const getCommentsByPageNumber = async (
         logging.error("GET_COMMENTS_BY_PAGE_NUMBER", error);
     }
 };
+
 export const countOfLeftComments = async (
     pageOfDomain: string
 ): Promise<number | undefined> => {
     try {
+        if (redisClient.get(`countOfLeftComments_${pageOfDomain}`)) {
+            let temp = await redisClient.get(
+                `countOfLeftComments_${pageOfDomain}`
+            );
+            // console.log("redis client exists", temp);
+            return parseInt(temp);
+        }
         const query = `SELECT COUNT(*) FROM comments WHERE pageOfDomainId=(SELECT id FROM pagesOfDomain WHERE pageName = '${pageOfDomain}')`;
         const commentCount = (await Query(connection!, query)) as {
             commentsCountNumber: number;
@@ -226,6 +255,11 @@ export const countOfLeftComments = async (
         let result = Object.values(
             JSON.parse(JSON.stringify(commentCount[0]))
         )[0] as number;
+        // console.log(result);
+        await redisClient.set(
+            `countOfLeftComments_${pageOfDomain}`,
+            result.toString()
+        );
         return result;
     } catch (error: any) {
         logging.error("COUNT_OF_LEFT_COMMENTS", error);
