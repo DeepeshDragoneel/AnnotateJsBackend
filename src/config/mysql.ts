@@ -29,7 +29,6 @@ const Query = async (connection: mysql.Connection, query: string) =>
                 reject(error);
                 return;
             }
-
             resolve(result);
         });
     });

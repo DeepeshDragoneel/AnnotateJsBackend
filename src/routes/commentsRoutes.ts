@@ -73,7 +73,11 @@ router.post(
                 return;
             } else {
                 const domainResult = await dataBaseQueries.findDomain(domain);
-                if (domainResult === undefined || domainResult.length === 0) {
+                if (
+                    domainResult === null ||
+                    domainResult === undefined ||
+                    domainResult.length === 0
+                ) {
                     res.json({
                         success: false,
                         message: "Domain not found",
@@ -83,7 +87,11 @@ router.post(
                 let pageResult = await dataBaseQueries.getPageOfDomain(
                     pageOfDomain
                 );
-                if (pageResult === undefined || pageResult.length === 0) {
+                if (
+                    pageResult === null ||
+                    pageResult === undefined ||
+                    pageResult.length === 0
+                ) {
                     pageResult = await dataBaseQueries.insertIntoPagesOfDomain(
                         pageOfDomain,
                         domainResult![0].domainId
@@ -104,7 +112,7 @@ router.post(
             }
         } catch (err) {
             // logging.error("Comments", err as string);
-            // console.log(err);
+            console.log(err);
             res.status(504).json({
                 success: false,
                 message: "Error posting comment",
@@ -127,10 +135,10 @@ router.get(
                 filter = ` AND resolved = 0`;
             } else if (temp.idx == 1) {
                 filter = ` AND userName = "${temp.username}" AND resolved = 0`;
-                console.log(filter);
+                // console.log(filter);
             } else if (temp.idx == 2) {
                 filter = ` AND resolved = 1`;
-                console.log(filter);
+                // console.log(filter);
             }
             const commentResults =
                 await dataBaseQueries.getCommentsByPageNumber(
@@ -141,7 +149,7 @@ router.get(
             const commentCount = await dataBaseQueries.countOfLeftComments(
                 temp.pageOfDomain
             );
-
+            // console.log(commentResults);
             res.json({
                 success: true,
                 message: "Comments retrieved",

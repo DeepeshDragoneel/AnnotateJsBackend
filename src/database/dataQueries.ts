@@ -42,8 +42,9 @@ export const findDomain = async (
     domainName: string
 ): Promise<DomainResultType[] | undefined> => {
     try {
-        if (redisClient.get(`findDomain-${domainName}`)) {
-            const temp = redisClient.get(`domain-${domainName}`);
+        const temp = await redisClient.get(`findDomain-${domainName}`);
+        if (temp) {
+            // const temp = await redisClient.get(`findDomain-${domainName}`);
             return JSON.parse(temp);
         }
         let query =
@@ -57,7 +58,8 @@ export const findDomain = async (
         );
         return results;
     } catch (error: any) {
-        logging.error("FIND_DOMAIN", error);
+        // logging.error("FIND_DOMAIN", error);
+        console.log(error);
     }
 };
 export const addNewDomain = async (
@@ -68,7 +70,9 @@ export const addNewDomain = async (
             "INSERT INTO registeredDomains (domainName) VALUES ('" +
             domainName +
             "')";
-        const results = (await Query(connection!, query)) as DomainResultType[];
+        await Query(connection!, query);
+        await redisClient.del(`findDomain-${domainName}`);
+        const results = await findDomain(domainName);
         return results;
     } catch (error: any) {
         logging.error("FIND_DOMAIN", error);
@@ -77,10 +81,52 @@ export const addNewDomain = async (
 
 export const deleteDomainUsers = async (domainId: number): Promise<void> => {
     try {
+        const allUsers = (await Query(
+            connection!,
+            `SELECT * FROM domainToUsers WHERE domainId = ${domainId}`
+        )) as DomainToUsersType[];
+        for (const user of allUsers) {
+            `findUserToDomain-${domainId}-${user.email}`;
+            await redisClient.del(`findUserToDomain-${domainId}-${user.email}`);
+        }
         const query = `DELETE FROM domainToUsers WHERE domainId = ${domainId}`;
         await Query(connection!, query);
     } catch (error: any) {
         logging.error("DELETE_DOMAIN_USER", error);
+    }
+};
+
+export const findUserToDomain = async (
+    domain: string,
+    email: string
+): Promise<DomainToUsersType[] | undefined> => {
+    try {
+        const temp = await redisClient.get(
+            `findUserToDomain-${domain}-${email}`
+        );
+        if (temp) {
+            return JSON.parse(temp);
+        }
+        let query = `SELECT * FROM domainToUsers WHERE domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}') AND email = '${email}'`;
+        const results = (await Query(
+            connection!,
+            query
+        )) as DomainToUsersType[];
+        const domainInfo = await findDomain(domain);
+        if (
+            domainInfo !== null &&
+            domainInfo !== undefined &&
+            domainInfo.length > 0
+        ) {
+            const domainId = domainInfo![0].domainId;
+            await redisClient.set(
+                `findUserToDomain-${domainId}-${email}`,
+                JSON.stringify(results)
+            );
+        }
+        return results;
+    } catch (error: any) {
+        logging.error("FIND_USER_TO_DOMAIN", error);
     }
 };
 
@@ -110,6 +156,10 @@ export const findUser = async (
     email: string
 ): Promise<UserResultType[] | undefined> => {
     try {
+        const temp = await redisClient.get(`findUser-${email}`);
+        if (temp) {
+            return JSON.parse(temp);
+        }
         let query = `SELECT * FROM users WHERE email = '${email}'`;
         const results = (await Query(connection!, query)) as UserResultType[];
         if (results.length === 0) {
@@ -119,25 +169,12 @@ export const findUser = async (
                 query
             )) as UserResultType[];
         }
+        if (results.length > 0) {
+            await redisClient.set(`findUser-${email}`, JSON.stringify(results));
+        }
         return results;
     } catch (error: any) {
         logging.error("FIND_USERS", error);
-    }
-};
-
-export const findUserToDomain = async (
-    domain: string,
-    email: string
-): Promise<DomainToUsersType[] | undefined> => {
-    try {
-        let query = `SELECT * FROM domainToUsers WHERE domainId = (SELECT domainId FROM registeredDomains WHERE domainName = '${domain}') AND email = '${email}'`;
-        const results = (await Query(
-            connection!,
-            query
-        )) as DomainToUsersType[];
-        return results;
-    } catch (error: any) {
-        logging.error("FIND_USER_TO_DOMAIN", error);
     }
 };
 
@@ -158,8 +195,18 @@ export const getUserById = async (
     userId: number
 ): Promise<UserResultType[] | undefined> => {
     try {
+        const temp = await redisClient.get(`getUserById-${userId}`);
+        if (temp) {
+            return JSON.parse(temp);
+        }
         const query = `SELECT * FROM users WHERE userId = ${userId}`;
         const results = (await Query(connection!, query)) as UserResultType[];
+        if (results !== undefined && results !== null && results.length > 0) {
+            await redisClient.set(
+                `getUserById-${userId}`,
+                JSON.stringify(results)
+            );
+        }
         return results;
     } catch (error: any) {
         logging.error("GET_USER_BY_ID", error);
@@ -170,22 +217,31 @@ export const getPageOfDomain = async (
     pageName: string
 ): Promise<PageOfDomainType[] | undefined> => {
     try {
-        if (redisClient.get(`getPageOfDomain-${pageName}`)) {
-            const temp = await redisClient.get(`getPageOfDomain-${pageName}`);
+        const temp = await redisClient.get(`getPageOfDomain-${pageName}`);
+        if (temp) {
             return JSON.parse(temp);
         }
+        console.log(pageName);
         const query = `SELECT * FROM pagesOfDomain WHERE pageName = '${pageName}'`;
+        console.log(query);
         let pageResult = (await Query(
             connection!,
             query
         )) as PageOfDomainType[];
-        await redisClient.set(
-            `getPageOfDomain-${pageName}`,
-            JSON.stringify(pageResult)
-        );
+        if (
+            pageResult !== undefined &&
+            pageResult !== null &&
+            pageResult.length > 0
+        ) {
+            await redisClient.set(
+                `getPageOfDomain-${pageName}`,
+                JSON.stringify(pageResult)
+            );
+        }
         return pageResult;
     } catch (error: any) {
-        logging.error("GET_PAGE_OF_DOMAIN", error);
+        // logging.error("GET_PAGE_OF_DOMAIN", error);
+        console.log(error);
     }
 };
 
@@ -194,7 +250,11 @@ export const insertIntoPagesOfDomain = async (
     domainId: number
 ): Promise<PageOfDomainType[] | undefined> => {
     const query = `INSERT INTO pagesOfDomain (pageName, domainId) VALUES ('${pageName}', ${domainId})`;
-    const results = (await Query(connection!, query)) as PageOfDomainType[];
+    (await Query(connection!, query)) as PageOfDomainType[];
+    const results = (await Query(
+        connection!,
+        `SELECT * FROM pagesOfDomain WHERE pageName = '${pageName}'`
+    )) as PageOfDomainType[];
     return results;
 };
 
@@ -270,7 +330,7 @@ export const getCommentById = async (
     commentId: number
 ): Promise<CommentType[] | undefined> => {
     try {
-        const query = `SELECT * FROM comments WHERE id = ${commentId}`;
+        const query = `SELECT * FROM comments WHERE commentsId = ${commentId}`;
         const results = (await Query(connection!, query)) as CommentType[];
         return results;
     } catch (error: any) {
@@ -280,7 +340,7 @@ export const getCommentById = async (
 
 export const resolveComment = async (commentId: number): Promise<void> => {
     try {
-        const query = `UPDATE comments SET resolved = 1 WHERE id = ${commentId}`;
+        const query = `UPDATE comments SET resolved = 1 WHERE commentsId = ${commentId}`;
         await Query(connection!, query);
     } catch (error: any) {
         logging.error("RESOLVE_COMMENT", error);

@@ -45,13 +45,13 @@ router.post(
             //creating or fetching domain Id
             let domainId: number;
             let results = await dataBaseQueries.findDomain(domainName);
-            // logging.info(NAMESPACE, "All Domains: ", results);
+            logging.info(NAMESPACE, "All Domains: ", results);
             if (
                 results === null ||
                 results === undefined ||
                 results.length === 0
             ) {
-                // logging.info(NAMESPACE, "Adding Domain");
+                logging.info(NAMESPACE, "Adding Domain");
                 results = await dataBaseQueries.addNewDomain(domainName);
             }
             domainId = results![0].domainId;
@@ -73,12 +73,15 @@ router.post(
                 res.json({
                     message: "Successfully added users to domain",
                 });
+                return;
             }
         } catch (err) {
             // logging.error(NAMESPACE, err as string);
             res.json({
                 message: "Error adding users to domain",
             });
+            console.log(err);
+            return;
         }
     }
 );
