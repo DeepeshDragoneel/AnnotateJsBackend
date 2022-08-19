@@ -11,10 +11,10 @@ export const connectToDB = async () => {
         connection = await Connect();
         logging.info("Data Base", "Connected to REDIS and MYSQL DB");
         // redisClient = redis.createClient(Config.redis.port, Config.redis.host);
-        const url = `redis://redis-18429.c85.us-east-1-2.ec2.cloud.redislabs.com:18429`;
+        const url = Config.redis.url;
         redisClient = createClient({
             url: url,
-            password: "1qG9SRrX9J6YzW0ub0wyfXy68A3wM1AK",
+            password: Config.redis.password,
         });
         let reconnectTime: any = null;
         const TimeOutError = () => {

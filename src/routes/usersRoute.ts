@@ -80,7 +80,7 @@ router.post(
             res.json({
                 message: "Error adding users to domain",
             });
-            console.log(err);
+            // console.log(err);
             return;
         }
     }

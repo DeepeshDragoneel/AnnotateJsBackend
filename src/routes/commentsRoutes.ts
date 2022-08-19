@@ -109,6 +109,7 @@ router.post(
                     success: true,
                     message: "Comment Posted",
                 });
+                return;
             }
         } catch (err) {
             // logging.error("Comments", err as string);
@@ -117,6 +118,7 @@ router.post(
                 success: false,
                 message: "Error posting comment",
             });
+            return;
         }
     }
 );
@@ -156,10 +158,12 @@ router.get(
                 comments: commentResults,
                 hasMore: commentCount! > temp.pageNumber * 10 + 10,
             });
+            return;
         } catch (err) {
             // logging.error("Comments", err as string);
             console.log(err);
             res.status(500).send(err);
+            return;
         }
     }
 );
@@ -178,6 +182,7 @@ router.post(
                     success: false,
                     message: "User not found",
                 });
+                return;
             } else {
                 const newResults = await dataBaseQueries.findUserToDomain(
                     domain,
@@ -205,18 +210,21 @@ router.post(
                         success: false,
                         message: "Comment not found",
                     });
+                    return;
                 } else {
                     await dataBaseQueries.resolveComment(commentId);
                     res.json({
                         success: true,
                         message: "Comment resolved",
                     });
+                    return;
                 }
             }
         } catch (err) {
             // logging.error("Comments", err as string);
             console.log(err);
             res.status(500).send(err);
+            return;
         }
     }
 );
