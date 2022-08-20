@@ -105,6 +105,7 @@ router.post(
                     success: false,
                     message: "User not found",
                 });
+                return;
             } else {
                 if (results[0].password === password) {
                     // //logging.info("USER LOGIN", "User found");
@@ -145,12 +146,14 @@ router.post(
                         isAdmin: temp,
                         access: true,
                     });
+                    return;
                 } else {
                     // //logging.info("USER LOGIN", "Wrong password");
                     res.status(200).json({
                         success: false,
                         message: "Wrong password",
                     });
+                    return;
                 }
             }
         } catch (err) {
@@ -159,6 +162,7 @@ router.post(
                 success: false,
                 message: "Error Logging user",
             });
+            return;
         }
     }
 );
@@ -190,6 +194,7 @@ router.post(
                 userName: decoded.userName,
                 access: true,
             });
+            return;
         } catch (err) {
             //logging.error("CHECK USER", err as string);
             res.status(200).json({
@@ -197,6 +202,7 @@ router.post(
                 message: "User Not Found",
                 access: false,
             });
+            return;
         }
     }
 );
@@ -244,12 +250,14 @@ router.post(
                     success: true,
                     message: "Email sent to the user",
                 });
+                return;
             } else {
                 // logging.info("USER REGISTER", "User already exists");
                 res.status(200).json({
                     success: false,
                     message: "User already exists",
                 });
+                return;
             }
         } catch (err) {
             //logging.error("USER REGISTER", err as string);
@@ -257,6 +265,7 @@ router.post(
                 success: false,
                 message: err,
             });
+            return;
         }
     }
 );
@@ -281,10 +290,12 @@ router.get(
                     "<h1>User added</h1><br/><h3>You can now Login with your credentials!</h3>"
                 )
             );
+            return;
         } catch (err) {
             //logging.error("VERIFY USER", err as string);
             res.set("Content-Type", "text/html");
             res.status(504).send(Buffer.from("<h1>Error Adding User</h1>"));
+            return;
         }
     }
 );
