@@ -35,6 +35,7 @@ router.post(
             const allowedUsers = req.body.allowedUsers;
             const adminUsers = req.body.adminUsers;
             const domainName = req.body.domain;
+            console.log(allowedUsers);
             if (
                 allowedUsers === undefined ||
                 adminUsers === undefined ||
@@ -55,6 +56,7 @@ router.post(
                 results = await dataBaseQueries.addNewDomain(domainName);
             }
             domainId = results![0].domainId;
+            console.log("Domain Id: ", domainId);
             //Removing all users from domain
             await dataBaseQueries.deleteDomainUsers(domainId);
 
@@ -68,13 +70,14 @@ router.post(
             }
 
             //Creating or fetching admin users
+            console.log(adminUsers);
             for (let i = 0; i < adminUsers.length; i++) {
                 dataBaseQueries.addAdminUsers(domainId, adminUsers[i]);
-                res.json({
-                    message: "Successfully added users to domain",
-                });
-                return;
             }
+            res.json({
+                message: "Successfully added users to domain",
+            });
+            return;
         } catch (err) {
             // logging.error(NAMESPACE, err as string);
             res.json({

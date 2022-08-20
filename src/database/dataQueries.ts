@@ -136,6 +136,12 @@ export const addAllowedUsers = async (
 ): Promise<void> => {
     try {
         const query = `INSERT INTO domainToUsers (domainId, email, isAdmin) VALUES (${domainId}, '${email}', 0)`;
+        const temp = await redisClient.get(
+            `findUserToDomain-${domainId}-${email}`
+        );
+        if (temp) {
+            await redisClient.del(`findUserToDomain-${domainId}-${email}`);
+        }
         await Query(connection!, query);
     } catch (error: any) {
         logging.error("ADD_ALLOWED_USER", error);
@@ -148,6 +154,12 @@ export const addAdminUsers = async (
 ): Promise<void> => {
     let query = `DELETE FROM domainToUsers WHERE domainId = ${domainId} AND email = '${email}'`;
     await Query(connection!, query);
+
+    const temp = await redisClient.get(`findUserToDomain-${domainId}-${email}`);
+    if (temp) {
+        await redisClient.del(`findUserToDomain-${domainId}-${email}`);
+    }
+
     query = `INSERT INTO domainToUsers (domainId, email, isAdmin) VALUES (${domainId}, '${email}', 1)`;
     await Query(connection!, query);
 };
